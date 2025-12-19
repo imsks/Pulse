@@ -11,8 +11,6 @@
 - Distributed rate limiting (Redis)
 - Idempotency enforcement
 
-**System Design Note**: In production, you'd run multiple API instances behind a load balancer. Each instance must share rate limit state via Redis, otherwise rate limits would be per-instance (too permissive).
-
 ### 2️⃣ Data Plane (`workers/`)
 **Responsibility**: Consumes jobs, executes handlers, manages retries/failures.
 
@@ -21,8 +19,6 @@
 - Graceful failure handling (retry, DLQ)
 - Handler routing (via registry)
 - Isolation from Control Plane
-
-**System Design Note**: Workers can scale independently. If you have 10x more jobs, add more workers. If API is slow, scale API. This decoupling is critical for distributed systems.
 
 ### 3️⃣ Infrastructure (`queue/`, `rate-limit/`)
 **Responsibility**: Redis connections, BullMQ setup, rate limiting logic.
@@ -49,11 +45,6 @@
 ### Handler Registry (`handlers/registry.ts`)
 **Execution model** - users register handlers, Pulse routes jobs to them.
 
-**Why this matters:**
-- Decoupling: Pulse doesn't need domain knowledge
-- Extensibility: New job types without changing Pulse
-- Reusability: Same Pulse instance serves multiple apps
-
 **System Design Note**: In production, you'd want handler versioning, timeout policies, and handler metadata. But for now, keep it simple.
 
 ---
@@ -70,14 +61,6 @@ User App → Control Plane (API) → Rate Limiter → Queue (Redis) → Data Pla
 4. **Queue**: Job stored in Redis, API returns immediately
 5. **Data Plane**: Worker picks up job, routes by jobType
 6. **Handler**: User-defined function executes
-
-**System Design Note**: This async pattern allows:
-- API to respond in <100ms (just enqueue)
-- Workers to process at their own pace
-- Independent scaling of each layer
-- Fault isolation (worker crash doesn't affect API)
-
----
 
 ## 🚫 What Goes Where
 

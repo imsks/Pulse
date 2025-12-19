@@ -4,12 +4,6 @@
 
 ## 🎯 Project Identity
 
-**Pulse is NOT:**
-- A news app
-- A crawler
-- A business service
-- A product backend
-
 **Pulse IS:**
 A general-purpose event ingestion + job queue + worker execution platform that any app can use.
 
