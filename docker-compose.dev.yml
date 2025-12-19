@@ -1,0 +1,72 @@
+# Pulse - Development Docker Compose
+#
+# System Design Note:
+# This override file enables hot-reload during development.
+# It mounts source code as volumes and uses tsx for watch mode.
+# This is faster for iteration but not suitable for production.
+#
+# Note: When used with docker-compose.yml, this file extends it.
+# Redis is included here for clarity and to make dev setup self-contained.
+# In dev, Redis typically doesn't need persistence (faster restarts).
+
+version: '3.8'
+
+services:
+  # Infrastructure: Redis (dev configuration)
+  redis:
+    image: redis:7-alpine
+    container_name: pulse-redis-dev
+    ports:
+      - "6379:6379"
+    # No persistence in dev (faster, ephemeral)
+    # volumes:
+    #   - redis-data:/data
+    command: redis-server
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - pulse-network
+
+  pulse-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./src:/app/src
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./package.json:/app/package.json
+    command: ["npm", "run", "dev"]
+    environment:
+      - NODE_ENV=development
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - pulse-network
+
+  pulse-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./src:/app/src
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./package.json:/app/package.json
+    command: ["npm", "run", "worker"]
+    environment:
+      - NODE_ENV=development
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+
+networks:
+  pulse-network:
+    driver: bridge
+

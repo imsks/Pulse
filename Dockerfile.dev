@@ -1,0 +1,26 @@
+# Pulse - Development Dockerfile
+#
+# System Design Note:
+# Development image includes dev dependencies and tsx for hot-reload.
+# Source code is mounted as volume for live changes.
+# This is NOT for production - use Dockerfile instead.
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install ALL dependencies (including devDependencies)
+RUN npm ci || npm install
+
+# Copy config files
+COPY tsconfig.json ./
+
+# Expose port
+EXPOSE 3000
+
+# Default command (overridden in docker-compose.dev.yml)
+CMD ["npm", "run", "dev"]
+

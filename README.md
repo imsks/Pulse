@@ -80,6 +80,35 @@ Pulse routes jobs by `jobType` but does not know what handlers do. This keeps Pu
 
 ## 🚀 Getting Started
 
+### Option 1: Docker (Recommended)
+
+```bash
+# Build and start all services (Redis + API + Worker)
+docker-compose up --build
+
+# Or run in detached mode
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Scale workers independently
+docker-compose up --scale pulse-worker=3
+
+# Stop all services
+docker-compose down
+
+# Development mode with hot-reload
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+```
+
+**Services:**
+- `pulse-api` (Control Plane) → http://localhost:3000
+- `pulse-worker` (Data Plane) → processes jobs
+- `redis` (Infrastructure) → localhost:6379
+
+### Option 2: Local Development
+
 ```bash
 # Install dependencies
 npm install

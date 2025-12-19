@@ -1,0 +1,89 @@
+# Pulse - Docker Compose Configuration
+#
+# System Design Note:
+# This setup demonstrates the three-layer architecture:
+# - redis: Infrastructure layer (shared state)
+# - pulse-api: Control Plane (receives jobs, enqueues)
+# - pulse-worker: Data Plane (processes jobs)
+#
+# In production, you'd run multiple instances of each service
+# behind a load balancer. Docker Compose makes this easy for
+# development and testing.
+
+version: '3.8'
+
+services:
+  # Infrastructure: Redis
+  redis:
+    image: redis:7-alpine
+    container_name: pulse-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - pulse-network
+
+  # Control Plane: API Server
+  pulse-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pulse-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - API_PORT=3000
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: ["node", "dist/index.js"]
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - pulse-network
+    restart: unless-stopped
+
+  # Data Plane: Worker Process
+  pulse-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pulse-worker
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: ["node", "dist/workers/index.js"]
+    # Note: Healthcheck will be added once worker implements keep-alive
+    # For now, container restart policy handles failures
+    networks:
+      - pulse-network
+    restart: unless-stopped
+    # Scale workers independently (example: docker-compose up --scale pulse-worker=3)
+    deploy:
+      replicas: 1
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  pulse-network:
+    driver: bridge
+
