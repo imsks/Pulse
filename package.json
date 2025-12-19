@@ -1,7 +1,7 @@
 {
   "name": "pulse",
   "version": "0.1.0",
-  "description": "News Aggregation & Processing Backend - A backend systems learning lab",
+  "description": "General-purpose event ingestion + job queue + worker execution platform",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -11,17 +11,16 @@
     "type-check": "tsc --noEmit"
   },
   "keywords": [
-    "backend",
-    "queue",
+    "job-queue",
+    "worker",
     "redis",
     "bullmq",
-    "rate-limiting",
-    "workers"
+    "infrastructure",
+    "platform"
   ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.7.0",
     "bullmq": "^5.0.0",
     "express": "^4.18.2",
     "ioredis": "^5.3.2"
@@ -33,4 +32,3 @@
     "typescript": "^5.3.3"
   }
 }
-

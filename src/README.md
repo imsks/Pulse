@@ -1,74 +1,133 @@
-# Source Code Structure
+# Pulse Source Code Architecture
 
-## Directory Responsibilities
+## 🧱 Three-Layer Architecture
 
-### `api/`
-Express/Fastify route handlers. These receive HTTP requests, validate input, apply rate limiting, and enqueue jobs.
+### 1️⃣ Control Plane (`api/`, `index.ts`)
+**Responsibility**: Receives job requests, validates, rate limits, enqueues.
 
-**System Design Note**: API layer should be stateless and fast. It should NOT do heavy processing - that's what workers are for.
+**Key Principles:**
+- Stateless (scales horizontally)
+- Fast response (just enqueue, don't process)
+- Distributed rate limiting (Redis)
+- Idempotency enforcement
 
-### `queue/`
-BullMQ queue configuration and setup. Defines job types, queue names, and connection to Redis.
+**System Design Note**: In production, you'd run multiple API instances behind a load balancer. Each instance must share rate limit state via Redis, otherwise rate limits would be per-instance (too permissive).
 
-**System Design Note**: Queues decouple API from processing. This allows:
-- API to respond quickly (just enqueue)
+### 2️⃣ Data Plane (`workers/`)
+**Responsibility**: Consumes jobs, executes handlers, manages retries/failures.
+
+**Key Principles:**
+- Stateless (can run multiple instances)
+- Graceful failure handling (retry, DLQ)
+- Handler routing (via registry)
+- Isolation from Control Plane
+
+**System Design Note**: Workers can scale independently. If you have 10x more jobs, add more workers. If API is slow, scale API. This decoupling is critical for distributed systems.
+
+### 3️⃣ Infrastructure (`queue/`, `rate-limit/`)
+**Responsibility**: Redis connections, BullMQ setup, rate limiting logic.
+
+**Key Principles:**
+- Shared state (Redis)
+- Atomic operations (prevent race conditions)
+- Connection pooling
+- Health monitoring
+
+---
+
+## 📦 Core Abstractions
+
+### Job Schema (`types/job.ts`)
+**Canonical structure** that all jobs must conform to. Pulse never inspects `payload` - it's opaque.
+
+**Why this matters:**
+- Multi-tenancy: `tenantId` isolates workloads
+- Routing: `jobType` determines which handler executes
+- Idempotency: `idempotencyKey` prevents duplicates
+- Observability: `metadata.traceId` enables distributed tracing
+
+### Handler Registry (`handlers/registry.ts`)
+**Execution model** - users register handlers, Pulse routes jobs to them.
+
+**Why this matters:**
+- Decoupling: Pulse doesn't need domain knowledge
+- Extensibility: New job types without changing Pulse
+- Reusability: Same Pulse instance serves multiple apps
+
+**System Design Note**: In production, you'd want handler versioning, timeout policies, and handler metadata. But for now, keep it simple.
+
+---
+
+## 🔄 Data Flow
+
+```
+User App → Control Plane (API) → Rate Limiter → Queue (Redis) → Data Plane (Worker) → Handler
+```
+
+1. **User App**: Submits job via HTTP
+2. **Control Plane**: Validates job schema, checks rate limit, enqueues
+3. **Rate Limiter**: Uses Redis to track requests (distributed)
+4. **Queue**: Job stored in Redis, API returns immediately
+5. **Data Plane**: Worker picks up job, routes by jobType
+6. **Handler**: User-defined function executes
+
+**System Design Note**: This async pattern allows:
+- API to respond in <100ms (just enqueue)
 - Workers to process at their own pace
-- Independent scaling of API vs workers
-
-### `workers/`
-Background job processors. These consume jobs from the queue and do the actual work.
-
-**System Design Note**: Workers can be:
-- Worker Threads (shared memory, good for CPU-bound tasks)
-- Child Processes (isolated, good for heavy computation)
-- Both (depending on the job type)
-
-### `rate-limit/`
-Redis-based rate limiting middleware. Uses Redis to track request counts across multiple API instances.
-
-**System Design Note**: Redis enables distributed rate limiting. Without it, each API instance would have its own counter, allowing more requests than intended.
-
-### `services/`
-Business logic layer. Contains the actual news fetching, processing, and transformation logic.
-
-**System Design Note**: Services should be pure functions when possible. This makes them:
-- Testable
-- Reusable
-- Easy to reason about
-
-### `utils/`
-Helper functions, constants, and shared utilities.
+- Independent scaling of each layer
+- Fault isolation (worker crash doesn't affect API)
 
 ---
 
-## Data Flow
+## 🚫 What Goes Where
 
-```
-HTTP Request → API Route → Rate Limiter → Queue (Redis) → Worker → Processing
-```
+### ✅ Control Plane (`api/`)
+- Job submission endpoint
+- Job status endpoint
+- Rate limiting middleware
+- Idempotency checks
+- Handler registration endpoint (for users)
 
-1. **API Route**: Receives request, validates input
-2. **Rate Limiter**: Checks Redis for request count, allows/denies
-3. **Queue**: Job is enqueued in Redis, API returns immediately
-4. **Worker**: Picks up job, processes it (fetch news, transform, etc.)
-5. **Processing**: Actual work happens here (CPU-heavy tasks)
+### ✅ Data Plane (`workers/`)
+- Job consumption from queue
+- Handler routing
+- Retry logic
+- DLQ routing
+- Graceful shutdown
+
+### ✅ Infrastructure (`queue/`, `rate-limit/`)
+- Redis connection management
+- BullMQ queue setup
+- Rate limiting algorithm
+- Lock management (for idempotency)
+
+### ❌ NOT in Pulse
+- Domain logic (what jobs do)
+- Business rules
+- Data transformation (beyond validation)
+- Frontend/UI
+- Authentication (beyond tenant isolation)
 
 ---
 
-## Key Design Decisions
+## 🧠 Future Features (Design Must Allow)
 
-### Why separate API and Workers?
-- **Scalability**: Scale API and workers independently
-- **Fault Tolerance**: Worker crash doesn't affect API
-- **Resource Optimization**: API can be memory-optimized, workers CPU-optimized
+All current code must allow these future features:
 
-### Why Redis for rate limiting?
-- **Distributed**: Works across multiple API instances
-- **Fast**: In-memory, sub-millisecond latency
-- **Atomic**: Built-in atomic operations prevent race conditions
+- **Dead Letter Queue**: Failed jobs after max retries
+- **Exponential Backoff**: Retry delays increase exponentially
+- **Job Timeouts**: Kill jobs that run too long
+- **Per-Tenant Queues**: Optional isolation per tenant
+- **Observability Hooks**: Metrics, logs, traces
+- **Graceful Shutdown**: Finish current jobs before exit
 
-### Why BullMQ over raw Redis?
-- **Job Management**: Built-in retry, delay, priority
-- **Monitoring**: Job status, progress tracking
-- **Reliability**: Dead-letter queues, job persistence
+If you see code that blocks these, **flag it**.
 
+---
+
+## 📝 Development Notes
+
+- **30-minute sessions**: One concept per session
+- **Platform purity**: No domain logic
+- **Interview-ready**: Every decision explainable
+- **Minimalism**: Smallest working change
