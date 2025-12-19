@@ -1,0 +1,55 @@
+# Development-specific .dockerignore
+# This file is used when building dev images to exclude unnecessary files
+
+# Dependencies (will be installed in container)
+node_modules/
+
+# Build output (not needed in dev, tsx compiles on-the-fly)
+dist/
+*.tsbuildinfo
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Documentation (not needed in container)
+*.md
+!README.md
+
+# Docker files (don't copy into image)
+docker-compose.yml
+docker-compose.dev.yml
+Dockerfile
+Dockerfile.dev
+.dockerignore
+.dockerignore.dev
+
+# Testing
+coverage/
+.nyc_output/
+*.test.ts
+*.spec.ts
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Environment files (use env vars in docker-compose)
+.env
+.env.local
+.env.*.local
+
+# Keep source code - it's mounted as volume anyway
+# But exclude it from build context for faster builds
+# (Actually, we need src/ for tsconfig.json to work, so keep it minimal)
+

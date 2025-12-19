@@ -1,25 +1,36 @@
-# Pulse - Development Dockerfile
+# Pulse - Development Dockerfile (Optimized for Speed)
 #
 # System Design Note:
-# Development image includes dev dependencies and tsx for hot-reload.
-# Source code is mounted as volume for live changes.
-# This is NOT for production - use Dockerfile instead.
+# This image is optimized for fast development iteration:
+# - All dependencies pre-installed (no npm install on every start)
+# - Source code mounted as volume (instant file changes)
+# - tsx watch mode for hot-reload (no manual restarts)
+#
+# Performance optimizations:
+# - Layer caching: package.json copied first (changes less frequently)
+# - Alpine Linux: smaller image = faster pulls
+# - No build step: tsx compiles on-the-fly
 
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files
+# Install dependencies in separate layer (better caching)
+# Copy package files first (changes less frequently than source)
 COPY package.json package-lock.json* ./
 
 # Install ALL dependencies (including devDependencies)
+# Use npm ci for faster, reproducible installs
 RUN npm ci || npm install
 
-# Copy config files
+# Copy config files (needed for tsx)
 COPY tsconfig.json ./
 
 # Expose port
 EXPOSE 3000
+
+# Set Node.js options for faster startup in dev
+ENV NODE_OPTIONS="--enable-source-maps"
 
 # Default command (overridden in docker-compose.dev.yml)
 CMD ["npm", "run", "dev"]

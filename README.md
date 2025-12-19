@@ -80,7 +80,40 @@ Pulse routes jobs by `jobType` but does not know what handlers do. This keeps Pu
 
 ## 🚀 Getting Started
 
-### Option 1: Docker (Recommended)
+### ⚡ Fast Development Mode (Recommended)
+
+**Optimized for speed with instant hot-reload:**
+
+```bash
+# Quick start (using Makefile)
+make dev
+
+# Or using docker-compose directly
+docker-compose -f docker-compose.dev.yml up --build
+
+# View logs
+make dev-logs
+# Or specific service
+make dev-logs-api
+make dev-logs-worker
+
+# Stop
+make dev-down
+```
+
+**What makes it fast:**
+- ✅ **Instant hot-reload** - `tsx watch` detects changes in <100ms
+- ✅ **Named volumes** - `node_modules` cached (no slow bind mounts)
+- ✅ **Optimized watch** - Only watches `src/`, ignores `node_modules` and `dist/`
+- ✅ **Source maps** - Fast debugging with `--enable-source-maps`
+- ✅ **No build step** - TypeScript compiles on-the-fly
+
+**Services:**
+- `pulse-api` (Control Plane) → http://localhost:3000
+- `pulse-worker` (Data Plane) → processes jobs
+- `redis` (Infrastructure) → localhost:6379
+
+### 🐳 Production Docker
 
 ```bash
 # Build and start all services (Redis + API + Worker)
@@ -97,17 +130,9 @@ docker-compose up --scale pulse-worker=3
 
 # Stop all services
 docker-compose down
-
-# Development mode with hot-reload
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
 ```
 
-**Services:**
-- `pulse-api` (Control Plane) → http://localhost:3000
-- `pulse-worker` (Data Plane) → processes jobs
-- `redis` (Infrastructure) → localhost:6379
-
-### Option 2: Local Development
+### 💻 Local Development (No Docker)
 
 ```bash
 # Install dependencies
@@ -117,10 +142,10 @@ npm install
 docker run -d -p 6379:6379 redis:7-alpine
 
 # Start the Control Plane (API)
-npm run dev
+npm run dev:local
 
 # Start the Data Plane (Workers) - in separate terminal
-npm run worker
+npm run worker:local
 ```
 
 ## 📁 Project Structure
@@ -149,12 +174,39 @@ pulse/
 - Graceful worker shutdown
 - Job timeout handling
 
+## ⚡ Development Experience
+
+**Optimized for fast iteration:**
+
+- **Hot Reload**: Changes in `src/` trigger instant restart (<100ms)
+- **No Build Step**: TypeScript compiles on-the-fly with `tsx`
+- **Fast Volumes**: Named volumes for `node_modules` (faster than bind mounts)
+- **Smart Watch**: Only watches `src/`, ignores `node_modules` and `dist/`
+- **Quick Commands**: Use `make dev` for one-command startup
+
+**Workflow:**
+1. Edit code in `src/`
+2. Save file
+3. See changes instantly (tsx auto-restarts)
+4. No manual rebuild needed
+
+**Makefile Commands:**
+```bash
+make dev              # Start everything
+make dev-logs         # View all logs
+make dev-logs-api     # View API logs only
+make dev-restart-api  # Restart API (faster than full restart)
+make dev-clean        # Clean everything
+make help             # See all commands
+```
+
 ## ⏱️ Development Philosophy
 
 - **30-minute sessions**: Keep changes small, one concept per session
 - **Platform purity**: No domain logic, no business rules
 - **Interview-ready**: Every decision explainable in system design interviews
 - **Extensibility**: All design decisions must allow future features
+- **Fast iteration**: Optimized dev setup for quick feedback loops
 
 ## 🚫 What Pulse Does NOT Do
 

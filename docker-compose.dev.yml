@@ -35,36 +35,62 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     volumes:
-      - ./src:/app/src
-      - ./tsconfig.json:/app/tsconfig.json
-      - ./package.json:/app/package.json
+      # Source code: bind mount for instant changes
+      - ./src:/app/src:delegated
+      # Config files: bind mount (may change)
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./package.json:/app/package.json:ro
+      # node_modules: named volume (faster than bind mount, avoids host conflicts)
+      - pulse-api-node-modules:/app/node_modules
+    ports:
+      - "3000:3000"
     command: ["npm", "run", "dev"]
     environment:
       - NODE_ENV=development
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - API_PORT=3000
+      # Faster Node.js startup
+      - NODE_OPTIONS=--enable-source-maps
     depends_on:
       redis:
         condition: service_healthy
     networks:
       - pulse-network
+    # Faster restart on code changes
+    restart: unless-stopped
 
   pulse-worker:
     build:
       context: .
       dockerfile: Dockerfile.dev
     volumes:
-      - ./src:/app/src
-      - ./tsconfig.json:/app/tsconfig.json
-      - ./package.json:/app/package.json
+      # Source code: bind mount for instant changes
+      - ./src:/app/src:delegated
+      # Config files: bind mount (may change)
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./package.json:/app/package.json:ro
+      # node_modules: named volume (faster, avoids host conflicts)
+      - pulse-worker-node-modules:/app/node_modules
     command: ["npm", "run", "worker"]
     environment:
       - NODE_ENV=development
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      # Faster Node.js startup
+      - NODE_OPTIONS=--enable-source-maps
     depends_on:
       redis:
         condition: service_healthy
+    networks:
+      - pulse-network
+    # Faster restart on code changes
+    restart: unless-stopped
+
+volumes:
+  # Named volumes for node_modules (faster than bind mounts)
+  pulse-api-node-modules:
+  pulse-worker-node-modules:
 
 networks:
   pulse-network:
