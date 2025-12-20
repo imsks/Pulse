@@ -1,31 +1,34 @@
-/**
- * Pulse - Data Plane (Worker Process)
- * 
- * System Design Note:
- * This is the Data Plane that consumes jobs from Redis queues,
- * routes them to registered handlers, and manages retries/failures.
- * 
- * In a distributed backend system, workers:
- * - Must be stateless (can run multiple instances)
- * - Must handle failures gracefully (retry, DLQ)
- * - Must support graceful shutdown (finish current jobs)
- * - Must be isolated from Control Plane (independent scaling)
- * 
- * Future features this must support:
- * - Exponential backoff retries
- * - Dead Letter Queue (DLQ)
- * - Job timeouts
- * - Worker health monitoring
- */
+import { getRedisClient, closeRedisConnection } from '../infrastructure/redis'
 
-console.log('🔧 Pulse Data Plane (Worker) starting...');
-console.log('📝 TODO: Connect to Redis queue');
-console.log('📝 TODO: Consume jobs from queue');
-console.log('📝 TODO: Route jobs to registered handlers');
-console.log('📝 TODO: Handle failures and retries');
-console.log('📝 TODO: Implement DLQ for failed jobs');
-console.log('📝 TODO: Support graceful shutdown');
+// Replace console.log statements with:
+async function initializeWorker() {
+    try {
+        const client = await getRedisClient()
+        client.connect()
+        console.log('✅ Redis initialized')
+    } catch (error) {
+        console.error('❌ Failed to initialize Redis:', error)
+        throw error
+    }
+}
 
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+    console.log('Worker: SIGTERM received, shutting down gracefully...')
+    // TODO: Stop accepting new jobs
+    // TODO: Wait for current jobs to finish
+    await closeRedisConnection()
+    process.exit(0)
+})
+
+process.on('SIGINT', async () => {
+    console.log('Worker: SIGINT received, shutting down gracefully...')
+    await closeRedisConnection()
+    process.exit(0)
+})
+
+// Start worker
+initializeWorker()
 // TODO: Initialize BullMQ worker
 // TODO: Process jobs with appropriate concurrency
 // TODO: Route by jobType to handler registry
