@@ -23,7 +23,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "bullmq": "^5.0.0",
+    "bullmq": "^5.66.2",
     "express": "^4.18.2",
     "ioredis": "^5.8.2"
   },
