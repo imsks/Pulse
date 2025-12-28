@@ -14,6 +14,7 @@ const getRedisConfig = (): RedisOptions => {
         connectTimeout: 10000,
         enableOfflineQueue: true,
         lazyConnect: true,
+        maxRetriesPerRequest: null,
     }
 }
 
