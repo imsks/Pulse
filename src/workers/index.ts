@@ -1,6 +1,6 @@
 import { getRedisClient, closeRedisConnection } from '../infrastructure/redis'
 import { Worker, Job } from 'bullmq'
-import { getJobQueue, closeQueue } from '../queue/queue'
+import { getJobQueue } from '../queue/queue'
 import { handlerRegistry } from '../handlers/registry'
 import { PulseJob } from '../types/job'
 
@@ -88,20 +88,10 @@ async function initializeWorker() {
     }
 }
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-    console.log('Worker: SIGTERM received, shutting down gracefully...')
-    // TODO: Stop accepting new jobs
-    await closeQueue()
-    // TODO: Wait for current jobs to finish
-    await closeRedisConnection()
-    process.exit(0)
-})
-
-process.on('SIGINT', async () => {
-    console.log('Worker: SIGINT received, shutting down gracefully...')
-    await closeRedisConnection()
-    process.exit(0)
+// Register a simple echo handler for testing
+handlerRegistry.register('ECHO', async (payload: unknown) => {
+    console.log('Echo handler received:', payload)
+    return { echo: payload, timestamp: new Date().toISOString() }
 })
 
 // Start worker

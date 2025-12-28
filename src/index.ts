@@ -13,12 +13,11 @@ app.use(express.json())
 // TODO: Add idempotency check
 // TODO: Add job status endpoint
 // TODO: Add handler registration endpoint (for users to register handlers)
-// TODO: Initialize Redis connection
+
 const initializeInfrastructure = async () => {
   try {
-    const client = getRedisClient();
-    // Connect to Redis (lazy connect, so this actually connects)
-    (await client).connect()
+    const client = await getRedisClient()
+    await client.ping()
     console.log('✅ Redis initialized')
   } catch (error) {
     console.error('❌ Failed to initialize Redis:', error)

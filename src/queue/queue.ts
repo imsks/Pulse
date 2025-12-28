@@ -31,13 +31,14 @@ export const getJobQueue = async (): Promise<Queue> => {
             connection: redisClient,
             defaultJobOptions: defaultQueueOptions,
         })
+
+        // Set error handler immediately after creation
+        jobQueue.on('error', (error) => {
+            console.error('❌ Queue error:', error.message)
+        })
+
+        console.log(`✅ BullMQ queue "${QUEUE_NAME}" initialized`)
     }
-
-    jobQueue.on('error', (error) => {
-        console.error('Queue error:', error)
-    })
-
-    console.log(`✅ Queue "${QUEUE_NAME}" initialized`)
 
     return jobQueue
 }
