@@ -3,6 +3,7 @@ import { Worker, Job } from 'bullmq'
 import { getJobQueue } from '../queue/queue'
 import { handlerRegistry } from '../handlers/registry'
 import { PulseJob } from '../types/job'
+import { moveToDLQ } from '../queue/dlq'
 
 async function initializeWorker() {
     try {
@@ -60,8 +61,23 @@ async function initializeWorker() {
             console.log(`✅ Job ${job.id} completed`)
         })
 
-        worker.on('failed', (job, err) => {
+        worker.on('failed', async (job, err) => {
             console.error(`❌ Job ${job?.id} failed:`, err.message)
+            // Check if job exceeded max retries
+            if (job && job.attemptsMade >= (job.opts.attempts || 3)) {
+                // If exceeded, move to DLQ
+                try {
+                    await moveToDLQ(
+                        job.id!,
+                        job.data,
+                        err.message,
+                        job.attemptsMade
+                    )
+                    console.log(`📭 Job ${job.id} moved to DLQ`)
+                } catch (dlqError) {
+                    console.error('Failed to move job to DLQ:', dlqError)
+                }
+            }
         })
 
         worker.on('error', (err) => {

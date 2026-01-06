@@ -5,6 +5,8 @@ import { PulseJob } from './types/job'
 import { rateLimitMiddleware } from './rate-limit/middleware'
 import { validateJobMiddleware } from './middleware/validate-job'
 import { idempotencyMiddleware, storeIdempotencyAfterEnqueue } from './middleware/idempotency'
+import { getDLQJobs, retryFromDLQ } from './queue/dlq'
+import { getHandler, listHandlers, registerHandler } from './api/handlers'
 
 const app = express()
 const PORT = process.env.API_PORT || 3000
@@ -91,6 +93,24 @@ app.get('/jobs/:jobId', async (req, res) => {
     })
   }
 })
+
+// GET /dlq - Get DLQ jobs
+app.get('/dlq', async (req, res) => {
+  const jobs = await getDLQJobs()
+  res.json(jobs)
+})
+
+// POST /dlq/retry - Retry job from DLQ
+
+app.post('/dlq/retry', async (req, res) => {
+  const { jobId } = req.body
+  const job = await retryFromDLQ(jobId)
+  res.json(job)
+})
+
+app.post('/handlers/register', registerHandler)
+app.get('/handlers', listHandlers)
+app.get('/handlers/:jobType', getHandler)
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
