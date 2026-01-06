@@ -3,6 +3,8 @@ import { getRedisClient, checkRedisConnection, closeRedisConnection } from './in
 import { enqueueJob, getJobStatus } from './queue/queue'
 import { PulseJob } from './types/job'
 import { rateLimitMiddleware } from './rate-limit/middleware'
+import { validateJobMiddleware } from './middleware/validate-job'
+import { idempotencyMiddleware, storeIdempotencyAfterEnqueue } from './middleware/idempotency'
 
 const app = express()
 const PORT = process.env.API_PORT || 3000
@@ -37,7 +39,7 @@ app.get('/health', async (req, res) => {
 })
 
 // API Routes
-app.post('/jobs', rateLimitMiddleware, async (req, res) => {
+app.post('/jobs', rateLimitMiddleware, validateJobMiddleware, idempotencyMiddleware, async (req, res) => {
   try {
     // TODO: Add job validation middleware
     const job: PulseJob = req.body

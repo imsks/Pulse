@@ -73,7 +73,7 @@ export function validateJob(job: unknown): JobValidationResult {
         }
     }
 
-    // TODO: Validate idempotencyKey (if provided)
+    // Validate idempotencyKey (if provided)
     // - Must be string
     // - Must be non-empty
     if (pulseJob.idempotencyKey !== undefined) {

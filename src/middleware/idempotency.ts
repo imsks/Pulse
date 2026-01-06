@@ -21,10 +21,11 @@ export async function idempotencyMiddleware(
     req: Request,
     res: Response,
     next: NextFunction
-) {
+): Promise<void> {
     // Only apply to POST /jobs
     if (req.method !== 'POST' || req.path !== '/jobs') {
-        return next()
+        next()
+        return
     }
 
     const job = req.body as PulseJob
@@ -34,7 +35,8 @@ export async function idempotencyMiddleware(
 
     // If no idempotencyKey, continue (no check needed)
     if (!idempotencyKey) {
-        return next()
+        next()
+        return
     }
 
     // Check if key exists in Redis
@@ -42,13 +44,15 @@ export async function idempotencyMiddleware(
 
     // If record exists, return existing jobId
     if (record) {
-        return res.status(200).json({ jobId: record.jobId, status: 'duplicate' })
+        res.status(200).json({ jobId: record.jobId, status: 'duplicate' })
+        return
     }
 
     // If not exists, attach key to request for later storage
     // Then call next()
     else {
         next()
+        return
     }
 }
 
